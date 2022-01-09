@@ -4,7 +4,7 @@ def get_index_comma(string):
     Return index of commas in string
     """
 
-    index_list = list()
+    index_list = []
     # Count open parentheses
     par_count = 0
 
@@ -23,11 +23,8 @@ def is_variable(expr):
     Check if expression is variable
     """
 
-    for i in expr:
-        if i == '(':
-            return False
 
-    return True
+    return all(i != '(' for i in expr)
 
 def process_expression(expr):
     """
@@ -57,7 +54,7 @@ def process_expression(expr):
     expr = expr[1:len(expr) - 1]
 
     # List of arguments
-    arg_list = list()
+    arg_list = []
 
     # Split string with commas, return list of arguments
     indices = get_index_comma(expr)
@@ -103,10 +100,7 @@ def check_occurs(var, expr):
     """
 
     arg_list = get_arg_list(expr)
-    if var in arg_list:
-        return True
-
-    return False
+    return var in arg_list
 
 def unify(expr1, expr2):
     """
@@ -139,46 +133,39 @@ def unify(expr1, expr2):
     elif is_variable(expr1) and not is_variable(expr2):
         if check_occurs(expr1, expr2):
             return False
-        else:
-            tmp = str(expr2) + '/' + str(expr1)
-            return tmp
+        tmp = str(expr2) + '/' + str(expr1)
+        return tmp
     elif not is_variable(expr1) and is_variable(expr2):
         if check_occurs(expr2, expr1):
             return False
-        else:
-            tmp = str(expr1) + '/' + str(expr2)
-            return tmp
+        tmp = str(expr1) + '/' + str(expr2)
+        return tmp
     else:
         predicate_symbol_1, arg_list_1 = process_expression(expr1)
         predicate_symbol_2, arg_list_2 = process_expression(expr2)
 
-        # Step 2
-        if predicate_symbol_1 != predicate_symbol_2:
+        if predicate_symbol_1 != predicate_symbol_2 or len(arg_list_1) != len(
+            arg_list_2
+        ):
             return False
-        # Step 3
-        elif len(arg_list_1) != len(arg_list_2):
-            return False
-        else:
             # Step 4: Create substitution list
-            sub_list = list()
+        sub_list = []
 
             # Step 5:
-            for i in range(len(arg_list_1)):
-                tmp = unify(arg_list_1[i], arg_list_2[i])
+        for i in range(len(arg_list_1)):
+            tmp = unify(arg_list_1[i], arg_list_2[i])
 
-                if not tmp:
-                    return False
-                elif tmp == 'Null':
-                    pass
+            if not tmp:
+                return False
+            elif tmp != 'Null':
+                if type(tmp) == list:
+                    for j in tmp:
+                        sub_list.append(j)
                 else:
-                    if type(tmp) == list:
-                        for j in tmp:
-                            sub_list.append(j)
-                    else:
-                        sub_list.append(tmp)
+                    sub_list.append(tmp)
 
-            # Step 6
-            return sub_list
+        # Step 6
+        return sub_list
 
 if __name__ == '__main__':
     # Data 1
