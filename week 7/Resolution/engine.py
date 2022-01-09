@@ -85,9 +85,7 @@ class Sentence:
         return any(not param.isConstant() for param in self.variable_map.values())
 
     def __eq__(self, other):
-        if len(self.predicates) == 1 and self.predicates[0] == other:
-            return True
-        return False
+        return len(self.predicates) == 1 and self.predicates[0] == other
 
     def __str__(self):
         return "".join([str(predicate) for predicate in self.predicates])
@@ -141,9 +139,7 @@ class KB:
             query = queryStack.pop(-1)
             negatedQuery = query.getNegatedPredicate()
             queryPredicateName = negatedQuery.name
-            if queryPredicateName not in self.sentence_map:
-                return False
-            else:
+            if queryPredicateName in self.sentence_map:
                 queryPredicate = negatedQuery
                 for kb_sentence in self.sentence_map[queryPredicateName]:
                     if not visited[kb_sentence.sentence_index]:
@@ -179,7 +175,7 @@ class KB:
 
                                 if self.resolve(newQueryStack, new_visited, depth + 1):
                                     return True
-                return False
+            return False
         return True
 
 
@@ -187,31 +183,24 @@ def performUnification(queryPredicate, kbPredicate):
     substitution = {}
     if queryPredicate == kbPredicate:
         return True, {}
-    else:
-        for query, kb in zip(queryPredicate.params, kbPredicate.params):
-            if query == kb:
-                continue
-            if kb.isConstant():
-                if not query.isConstant():
-                    if query.name not in substitution:
-                        substitution[query.name] = kb.name
-                    elif substitution[query.name] != kb.name:
-                        return False, {}
-                    query.unify("Constant", kb.name)
-                else:
-                    return False, {}
-            else:
-                if not query.isConstant():
-                    if kb.name not in substitution:
-                        substitution[kb.name] = query.name
-                    elif substitution[kb.name] != query.name:
-                        return False, {}
-                    kb.unify("Variable", query.name)
-                else:
-                    if kb.name not in substitution:
-                        substitution[kb.name] = query.name
-                    elif substitution[kb.name] != query.name:
-                        return False, {}
+    for query, kb in zip(queryPredicate.params, kbPredicate.params):
+        if query == kb:
+            continue
+        if kb.isConstant():
+            if query.isConstant():
+                return False, {}
+            if query.name not in substitution:
+                substitution[query.name] = kb.name
+            elif substitution[query.name] != kb.name:
+                return False, {}
+            query.unify("Constant", kb.name)
+        else:
+            if kb.name not in substitution:
+                substitution[kb.name] = query.name
+            elif substitution[kb.name] != query.name:
+                return False, {}
+            if not query.isConstant():
+                kb.unify("Variable", query.name)
     return True, substitution
 
 
@@ -221,10 +210,7 @@ def negatePredicate(predicate):
 
 def negateAntecedent(sentence):
     antecedent = sentence[:sentence.find("=>")]
-    premise = []
-
-    for predicate in antecedent.split("&"):
-        premise.append(negatePredicate(predicate))
+    premise = [negatePredicate(predicate) for predicate in antecedent.split("&")]
 
     premise.append(sentence[sentence.find("=>") + 2:])
     return "|".join(premise)

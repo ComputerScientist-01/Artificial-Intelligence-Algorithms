@@ -51,18 +51,16 @@ def getInputData(filename):
                         _s_enemy.add(_row[0])
                         _s_enemy.add(_row[1])
             # Table numbers no need to exceed guests or enemy relation.
-            if _i_tables > _i_guests: _i_tables = _i_guests
+            _i_tables = min(_i_tables, _i_guests)
             # ***New added. Max table numbers should be equal to 1 or the number in the set of enemy group.
             _i_enemy = len(_s_enemy)
-            if _i_tables > max(1, _i_enemy): _i_tables = max(1, _i_enemy)
+            _i_tables = min(_i_tables, max(1, _i_enemy))
 
         _fp.close()
         return _i_guests, _i_tables, _restrictions
     except IOError as _err:
         if (DEBUG):
             print('File error: ' + str(_err))
-        else:
-            pass
         exit()
 
 
@@ -75,8 +73,6 @@ def setOutputData(filename='', isSatisfy=None, arrangement={}):
             orig_stdout = sys.stdout
             f = file(filename, 'w')
             sys.stdout = f
-        else:
-            pass
         ##########
         if not isSatisfy:
             print('no')
@@ -91,13 +87,9 @@ def setOutputData(filename='', isSatisfy=None, arrangement={}):
         if filename != None:
             sys.stdout = orig_stdout
             f.close()
-        else:
-            pass
     except IOError as _err:
         if (DEBUG == True):
             print('File error: ' + str(_err))
-        else:
-            pass
         exit()
 
 
@@ -122,9 +114,8 @@ class Wedding(object):
 
         if self.guests == 0 or self.tables == 0:
             return False, []
-        else:
-            self.CNFSentance = self.getWeddingRules()
-            if DEBUG: print(self.CNFSentance)
+        self.CNFSentance = self.getWeddingRules()
+        if DEBUG: print(self.CNFSentance)
 
         _kb.tell(self.CNFSentance)
         _is_satisfiable = _plg.is_satisfiable(_kb, ALGORITHM)
@@ -138,7 +129,7 @@ class Wedding(object):
             if _arrangement is not None:
                 _is_satisfiable = True  # ***new added but not in the submit version.
                 _arrangement = self.getResults(_arrangement)
-            elif ALGORITHM == 'DPLL' and _arrangement is None and _is_satisfiable is True:  # if WalkSAT no result but DPLL has a model
+            elif ALGORITHM == 'DPLL' and _is_satisfiable is True:  # if WalkSAT no result but DPLL has a model
                 _arrangement = _plg.model  # Get satisfy result model from DPLL if WalkSAT fail.
                 _arrangement = self.getResults(_arrangement)
             else:
@@ -193,14 +184,10 @@ class Wedding(object):
                                                   NOT + str(_rule[1]) + VARIABLE_SPLITTER + str(_tablei)})
 
                     # for each pair of enemies, guest a and b should not in same table.
-            #  ^ [~(Xai ^ Xbi)]=^[~Xai v ~Xbi] = CNF
             elif _rule[2] == 'E':
                 for _tablej in range(1, self.tables + 1):
                     _enemy_in_different_table.append({NOT + str(_rule[0]) + VARIABLE_SPLITTER + str(_tablej),
                                                       NOT + str(_rule[1]) + VARIABLE_SPLITTER + str(_tablej)})
-                else:
-                    pass
-
         if _everyone_possible_on_any_table != []: _CNFClauses.extend(_everyone_possible_on_any_table)
         if _everyone_only_exist_one_table != []: _CNFClauses.extend(_everyone_only_exist_one_table)
         if _friend_in_same_table != []: _CNFClauses.extend(_friend_in_same_table)
@@ -223,8 +210,7 @@ class Wedding(object):
         for _symbol in model:
             if model[_symbol] == True:
                 _guest_table = _symbol.split(VARIABLE_SPLITTER)
-                _arrangement.update({_guest_table[0]: _guest_table[1]})  # {guest: table}
-
+                _arrangement[_guest_table[0]] = _guest_table[1]
         return _arrangement
 
 
@@ -244,19 +230,13 @@ class Propositional_Logic(object):
         return _is_true
 
     def is_and(self, symbol=''):
-        _is_true = False
-        if AND in symbol: _is_true = True
-        return _is_true
+        return AND in symbol
 
     def is_or(self, symbol=''):
-        _is_true = False
-        if OR in symbol: _is_true = True
-        return _is_true
+        return OR in symbol
 
     def is_not(self, symbol=''):
-        _is_true = False
-        if NOT in symbol: _is_true = True
-        return _is_true
+        return NOT in symbol
 
     def is_include_not(self, clauses=[]):
         _is_true = False
@@ -320,8 +300,6 @@ class Propositional_Logic(object):
                 return False
             elif _return is None:
                 _unknown_clauses.append(_clause)
-            else:
-                pass
         if PRINT_TIME: print('DPLL. is_true_PL. finish=>%s' % (str(datetime.now())))
         if _unknown_clauses == []:
             self.model = model
@@ -333,24 +311,18 @@ class Propositional_Logic(object):
             _p, _v = self.get_pure_symbol(_symbols, _unknown_clauses)
             if _p:
                 _symbols = self.remove_both_symbol(_symbols, _p)
-                _model.update({_p: _v})
+                _model[_p] = _v
                 return self.DPLL(_unknown_clauses, _symbols, _model)
-            else:
-                pass
-
             _p, _v = self.get_unit_clause(_unknown_clauses, _model)
             if _p:
                 _symbols = self.remove_both_symbol(_symbols, _p)
-                _model.update({_p: _v})
+                _model[_p] = _v
                 return self.DPLL(_unknown_clauses, _symbols, _model)
-            else:
-                pass
-
             _symbols, _p, _v = self.pop_symbol(_symbols)
             _true_model = dict(_model)
-            _true_model.update({_p: _v})
+            _true_model[_p] = _v
             _false_model = dict(model)
-            _false_model.update({_p: not _v})
+            _false_model[_p] = not _v
             if (datetime.now() - self.begin_time).total_seconds() >= RESOURCE_DPLL:
                 return None
             return (self.DPLL(_unknown_clauses, _symbols, _true_model) or self.DPLL(_unknown_clauses, _symbols,
@@ -379,7 +351,7 @@ class Propositional_Logic(object):
                 if _positive_symbol in _clause: _has_positive = True
                 if _negative_symbol in _clause: _has_negative = True
             # return negative symbol asap.
-            if (_has_positive == False) and (_has_negative == True):  # flip the symbol and value
+            if not _has_positive and _has_negative:  # flip the symbol and value
                 return _positive_symbol, False
 
         if PRINT_TIME: print('get_pure_symbol=>finish=>%s' % (str(datetime.now())))
@@ -398,8 +370,6 @@ class Propositional_Logic(object):
                 _literal = next(iter(_clause))
                 if (self.is_not(_literal)):  # Find negative unit clause asap.
                     return _literal[1:], False
-                else:
-                    pass
         if PRINT_TIME: print('get_unit_clause=>finish=>%s' % (str(datetime.now())))
         if _literal != '':
             return _literal, True
@@ -435,14 +405,13 @@ class Propositional_Logic(object):
 
         if symbols == set():
             return symbols, None
-        else:
-            for _s in symbols:
-                if self.is_not(_s):
-                    _symbol = _s
-                    symbols.discard(_symbol)
-                    break;
-            if _symbol == '':
-                _symbol = symbols.pop()
+        for _s in symbols:
+            if self.is_not(_s):
+                _symbol = _s
+                symbols.discard(_symbol)
+                break;
+        if _symbol == '':
+            _symbol = symbols.pop()
 
         if (self.is_not(_symbol)):
             # if symbol include ~ operator
@@ -460,10 +429,9 @@ class Propositional_Logic(object):
         _bl = True
         if clause == set():
             return None
-        else:
-            _symbol = random.sample(list(clause), 1)
-            _symbol = _symbol[0]  # get symbol from list
-            _bl = True
+        _symbol = random.sample(list(clause), 1)
+        _symbol = _symbol[0]  # get symbol from list
+        _bl = True
 
         if (self.is_not(_symbol)):
             # if symbol include ~ operator
@@ -489,13 +457,16 @@ class Propositional_Logic(object):
                 _symbol = _literal
 
             _value = model.get(_symbol)  # always convert symbol in clause to positive form to compare with model.
-            if (_value == True and _is_not_symbol == False) or (_value == False and _is_not_symbol == True):
+            if (
+                _value == True
+                and not _is_not_symbol
+                or _value == False
+                and _is_not_symbol
+            ):
                 # if the value is true and original symbol does not include ~. (or the value is false and original symbol include ~)
                 _is_true = True
                 break
-            elif (_value == False and _is_not_symbol == False) or (_value == True and _is_not_symbol == True):
-                pass
-            else:  # _value is None
+            elif _value not in [False, True]:  # _value is None
                 _is_true = None
 
         if _is_true:
@@ -541,10 +512,12 @@ class Propositional_Logic(object):
         _max_count = 0
         _symbols = self.get_positive_symbols(selected_clause)
         for _symbol in _symbols:
-            _count = 0
-            for _clause in sentence:
-                if self.is_true_PL(_clause, self.flip_model(model, _symbol)):
-                    _count += 1
+            _count = sum(
+                1
+                for _clause in sentence
+                if self.is_true_PL(_clause, self.flip_model(model, _symbol))
+            )
+
             if _max_count < _count:
                 _max_count = _count
                 _max_symbol = _symbol
@@ -579,23 +552,14 @@ class Propositional_Logic(object):
                 _resolvents = self.PL_Resolve(ci, cj)
                 if set() in _resolvents:
                     if DEBUG: print('_resolvents=:%s' % (_resolvents))
-                    if _is_satisfiable:
-                        if DEBUG: print('resolvent is empty set()')
-                        return False
-                    else:
-                        if DEBUG: print('resolvent is empty set()')
-                        return True
+                    if DEBUG: print('resolvent is empty set()')
+                    return not _is_satisfiable
                 if _resolvents != []:
                     _new = self.add_set(_new, _resolvents)
                     # add resolvents into _new set.
             if self.is_subset_in_list(_new, _clauses):
-                if _is_satisfiable:
-                    if DEBUG: print('new is set of clauses')
-                    return True
-                else:
-                    if DEBUG: print('new is set of clauses')
-                    return False
-
+                if DEBUG: print('new is set of clauses')
+                return _is_satisfiable
             for _clause in _new:
                 if _clause not in _clauses:
                     _clauses.append(_clause)
@@ -626,23 +590,13 @@ class Propositional_Logic(object):
         # Add sets into list and avoid redundant set
         _set_list = list(set_list)
         for _set in sets:
-            _is_exist = False
-            for _existing_set in _set_list:
-                if _existing_set == _set:
-                    _is_exist = True
+            _is_exist = any(_existing_set == _set for _existing_set in _set_list)
             if not _is_exist:
                 _set_list.append(_set)
         return _set_list
 
     def is_subset_in_list(self, subsets, set_list):
-        # if all set in subsets are included in set list, return True.
-        _is_subset = True
-
-        for _subset in subsets:
-            if not (_subset in set_list):
-                _is_subset = False
-                break
-        return _is_subset
+        return all(_subset in set_list for _subset in subsets)
 
 
 class Prop_KB(object):
@@ -663,8 +617,7 @@ class Prop_KB(object):
         return _is_known
 
     def ask(self, qery):
-        _isTrue = False
-        return _isTrue
+        return False
 
     def get_sentence(self):
         return self.sentence
